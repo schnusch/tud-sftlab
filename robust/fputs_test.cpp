@@ -157,13 +157,13 @@ FILE *generateFILE(int test_id)
 			return NULL;
 		}
 		munmap(page + pagesize, pagesize);
-		memcpy(fp, page + pagesize - sizeof(*fp), sizeof(*fp));
+		fp = (FILE *)memcpy(fp, page + pagesize - sizeof(*fp), sizeof(*fp));
  #else
 		page = (char *)((uintptr_t)fp & ~(pagesize - 1));
  #endif
 		if(mprotect(page, pagesize, prot) < 0)
 		{
-			int errbak = 0;
+			int errbak = errno;
 			fclose(fp);
 			errno = errbak;
 			return NULL;
@@ -178,12 +178,12 @@ FILE *generateFILE(int test_id)
 		page = (char *)mmap(NULL, pagesize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 		if(page == MAP_FAILED)
 		{
-			int errbak = 0;
+			int errbak = errno;
 			fclose(fp);
 			errno = errbak;
 			return NULL;
 		}
-		memcpy(page, fp, sizeof(*fp));
+		fp = (FILE *)memcpy(page, fp, sizeof(*fp));
  #else
 		fp = (FILE *)malloc_prot(sizeof(*fp), fp, prot);
  #endif
@@ -269,7 +269,7 @@ const char *generateCSTR(int test_id)
 #else
 	if(mprotect(page, pagesize, prot) < 0 || (guard && munmap(page + pagesize, pagesize) < 0))
 	{
-		int errbak = 0;
+		int errbak = errno;
 		munmap(page, pagesize);
 		errno = errbak;
 		return NULL;
@@ -295,6 +295,7 @@ static int test_subproc(int cstr_id, int file_id)
 	}
 
 #ifdef KILL
+ #error abc
 	if(file_id == TC_FILE_MEM_RW && kill(getpid(), SIGSEGV) < 0)
 	{
 		perror("kill");
