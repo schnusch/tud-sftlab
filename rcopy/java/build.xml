@@ -1,0 +1,24 @@
+<project name="RCopy" default="build" basedir=".">
+    <description>
+        simple example build file for RCopy
+    </description>
+  <!-- set global properties for this build -->
+  <property name="src" location="."/>
+  <property name="build" location="build"/>
+
+  <target name="build" description="compile the source " >
+  	<mkdir dir="${build}" />
+    <!-- Compile the java code from ${src} into ${build} -->
+    <javac srcdir="${src}" destdir="${build}"/>
+  </target>
+
+  <target name="run" depends="build" description="generate the distribution" >
+    <!-- runs RCopy -->
+    <java classname="RCopy" classpath="${build}"/>
+  </target>
+
+  <target name="clean" description="clean up" >
+    <!-- Delete the ${build} directory -->
+    <delete dir="${build}" />
+  </target>
+</project>

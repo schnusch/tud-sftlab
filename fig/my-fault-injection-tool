@@ -1,0 +1,88 @@
+#!/usr/bin/env python2
+import os
+import shutil
+import tarfile
+import time
+import sys
+
+def tarcmp(a, b):
+	amembs = a.getmembers()
+	bmembs = b.getmembers()
+	if len(amembs) != len(bmembs):
+		print >> sys.stderr, 'file number mismatch'
+		return False
+	amembs.sort(key=lambda x: x.name)
+	bmembs.sort(key=lambda x: x.name)
+	for af, bf in zip(amembs, bmembs):
+		for attr in ('name', 'size', 'mtime', 'mode', 'linkname'):
+			if getattr(af, attr) != getattr(bf, attr):
+				print >> sys.stderr, 'file mismatch'
+				return False
+		af = a.extractfile(af)
+		bf = b.extractfile(bf)
+		if (af is None) != (bf is None):
+			print >> sys.stderr, 'file mismatch 2'
+			return False
+		if af is not None:
+			if af.read() != bf.read():
+				print >> sys.stderr, 'different file content'
+				return False
+	return True
+
+if os.path.exists('content'):
+	shutil.rmtree('content')
+if os.path.exists('temp.tar'):
+	os.remove('temp.tar')
+assert os.spawnvp(os.P_WAIT, 'tar', ['tar', '-xpf', 'content.tar']) == 0
+
+valgrind = False
+try:
+	if sys.argv[1] == '-v':
+		sys.argv.pop(1)
+		valgrind = True
+except IndexError:
+	pass
+
+try:
+	lib = 'faultinjectors/fi_%s.so' % sys.argv[1]
+	print 'Injected:', sys.argv[1]
+except IndexError:
+	lib = 'faultinjectors/common.so'
+if valgrind:
+	cmd = ['valgrind', '--trace-children=yes', './tar', '-cf', 'temp.tar', 'content/']
+	os.environ['LD_PRELOAD2'] = lib
+else:
+	cmd = ['tar', '-cf', 'temp.tar', 'content/']
+	os.environ['LD_PRELOAD'] = lib
+
+pid = os.spawnvp(os.P_NOWAIT, cmd[0], cmd)
+time.sleep(5)
+pid2, status = os.waitpid(pid, os.WNOHANG)
+if pid2 == 0:
+	os.kill(pid, signal.SIGKILL)
+	procstate = 'timeout'
+else:
+	if status & 0x00ff:
+		procstate = 'signaled' # %d' % (status & 0x00ff)
+	elif status & 0xff00:
+		procstate = 'exited'
+	else:
+		procstate = 'success'
+print 'ProcessState:', procstate
+
+if os.path.exists('temp.tar'):
+	if os.stat('temp.tar').st_size == 0:
+		tarstate = 'empty'
+	else:
+		original = tarfile.open('content.tar', 'r:')
+		try:
+			tmp = tarfile.open('temp.tar', 'r:')
+			try:
+				tarstate = 'okay' if tarcmp(original, tmp) else 'corrupted'
+			finally:
+				tmp.close()
+		finally:
+			original.close()
+else:
+	tarstate = 'no_tar'
+print 'TarState:', tarstate

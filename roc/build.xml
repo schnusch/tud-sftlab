@@ -1,0 +1,46 @@
+<project name="Tiny buggy http server" default="all" basedir=".">
+    <description>
+        a tiny buggy http server
+    </description>
+  <!-- set global properties for this build -->
+  <property name="lib" location="lib"/>
+  <property name="lib.jar" location="${lib}/tiny-httpd.jar"/>
+  <property name="example.dir" location="example" />
+  
+  <property name="test.root" location="test" />
+  <property name="test.errorpage" location="${test.root}/error.html" />
+  <property name="test.port" value="8080" />
+
+  <target name="all" depends="run" description="default built target" />
+  
+  <target name="clean" description="clean up" >
+    <delete dir="${example.dir}" quiet="true">
+		<exclude name="**/*.java"/>
+		<exclude name="**/build.xml"/>		
+	</delete>
+  </target>
+	
+  <target name="HttpServer2" description="compiles example classes">
+  	<javac srcdir="${example.dir}" classpath="${lib.jar}" />
+  </target>
+
+  <target name="HttpWorker2" description="compiles example classes">
+  	<javac srcdir="${example.dir}" classpath="${lib.jar}" />
+  </target>
+
+  <target name="example" depends="HttpServer2,HttpWorker2" description="compiles example classes">
+    <javac srcdir="${example.dir}" classpath="${lib.jar}" />
+  </target>
+  
+  <target name="run" depends="example" description="runs the http server with root {test} on Port {8080}">
+    <java classname="SimpleMain" fork="true">
+    	  <classpath>
+    	  	<pathelement path="${lib.jar}" />
+    	  	<pathelement path="${example.dir}" />
+    	  </classpath>
+      <arg value="root=${test.root}" />
+	  <arg value="port=${test.port}" />
+	  <arg value="error=${test.errorpage}" />
+    </java>
+  </target>
+</project>
